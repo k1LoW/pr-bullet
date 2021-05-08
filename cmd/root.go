@@ -27,7 +27,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/k1LoW/tbls/version"
+	"github.com/k1LoW/pr-bullet/version"
 	"github.com/spf13/cobra"
 )
 
