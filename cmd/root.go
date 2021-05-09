@@ -61,7 +61,7 @@ var rootCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		switch {
 		case len(args) == 0:
-			return fmt.Errorf("accepts >1 arg(s), received %d", len(args))
+			return fmt.Errorf("accepts > 0 arg(s), received %d", len(args))
 		case len(args) == 1:
 			fi, err := os.Stdin.Stat()
 			if err != nil {
