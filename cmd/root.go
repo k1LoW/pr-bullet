@@ -22,21 +22,100 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/Songmu/prompter"
+	"github.com/k1LoW/pr-bullet/gh"
 	"github.com/k1LoW/pr-bullet/version"
+	"github.com/labstack/gommon/color"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
+
+type Repo struct {
+	Owner string
+	Repo  string
+}
+
+func (r Repo) String() string {
+	return fmt.Sprintf("%s/%s", r.Owner, r.Repo)
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pr-bullet [PULL_REQUEST_URL] [TARGET_REPOS...]",
 	Short: "pr-bullet",
 	Long:  `pr-bullet.`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		switch {
+		case len(args) == 0:
+			return fmt.Errorf("accepts >1 arg(s), received %d", len(args))
+		case len(args) == 1 && !isatty.IsTerminal(os.Stdin.Fd()):
+			return fmt.Errorf("when received 1 arg, %s need STDIN", version.Name)
+		}
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		var t []string
+		g, err := gh.New()
+		if err != nil {
+			return err
+		}
+		prURL := args[0]
+		if len(args[1:]) > 0 {
+			t = args[1:]
+		}
+		ctx := context.Background()
+
+		owner, repo, number, err := gh.Parse(prURL)
+		if err != nil {
+			return err
+		}
+		pr, contents, err := g.GetPullRequest(ctx, owner, repo, number)
+		if err != nil {
+			return err
+		}
+
+		repos := []Repo{}
+		s := []string{}
+
+		for _, tr := range t {
+			owner, repo, number, err := gh.Parse(tr)
+			if err != nil {
+				return err
+			}
+			if _, err := g.GetRepository(ctx, owner, repo); err != nil {
+				return err
+			}
+			if number != 0 {
+				return fmt.Errorf("invalid arg: %s", tr)
+			}
+			repos = append(repos, Repo{owner, repo})
+			s = append(s, Repo{owner, repo}.String())
+		}
+
+		cmd.Println(color.Cyan("Original pull request:"))
+		cmd.Printf("  Title ... %s\n", pr.GetTitle())
+		cmd.Printf("  URL   ... %s\n", prURL)
+		cmd.Printf("  Files ... %d\n", len(contents))
+		cmd.Println(color.Cyan("Target repositories:"))
+		cmd.Printf("  %s\n", strings.Join(s, ", "))
+		yn := prompter.YN("Do you want to create pull requests?", true)
+		if !yn {
+			return nil
+		}
+
+		for _, r := range repos {
+			if err := g.CopyPullRequest(ctx, r.Owner, r.Repo, pr, contents); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	},
 }
