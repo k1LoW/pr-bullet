@@ -52,8 +52,8 @@ func (r Repo) String() string {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "pr-bullet [PULL_REQUEST_URL] [TARGET_REPOS...]",
-	Short: "pr-bullet",
-	Long:  `pr-bullet.`,
+	Short: "pr-bullet is a tool for copying pull request to multiple repositories",
+	Long:  `pr-bullet is a tool for copying pull request to multiple repositories.`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		switch {
 		case len(args) == 0:

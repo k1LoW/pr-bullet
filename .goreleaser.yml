@@ -1,0 +1,94 @@
+before:
+  hooks:
+    - go mod download
+    - go mod tidy
+builds:
+  -
+    id: pr-bullet-darwin
+    ldflags:
+      - -s -w -X github.com/k1LoW/pr-bullet.version={{.Version}} -X github.com/k1LoW/pr-bullet.commit={{.FullCommit}} -X github.com/k1LoW/pr-bullet.date={{.Date}} -X github.com/k1LoW/pr-bullet/version.Version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+  -
+    id: pr-bullet-linux
+    ldflags:
+      - -s -w -X github.com/k1LoW/pr-bullet.version={{.Version}} -X github.com/k1LoW/pr-bullet.commit={{.FullCommit}} -X github.com/k1LoW/pr-bullet.date={{.Date}} -X github.com/k1LoW/pr-bullet/version.Version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+archives:
+  -
+    id: pr-bullet-archive
+    name_template: '{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    format_overrides:
+      - goos: darwin
+        format: zip
+    files:
+      - CREDITS
+      - README.md
+      - CHANGELOG.md
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Version }}-next"
+changelog:
+  skip: true
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+dockers:
+  -
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - 'ghcr.io/k1low/pr-bullet:v{{ .Version }}'
+      - 'ghcr.io/k1low/pr-bullet:latest'
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/k1LoW/pr-bullet"
+    extra_files:
+      - scripts/entrypoint.sh
+brews:
+  -
+    name: pr-bullet
+    tap:
+      owner: k1LoW
+      name: homebrew-tap
+    commit_author:
+      name: k1LoW
+      email: k1lowxb@gmail.com
+    homepage: https://github.com/k1LoW/pr-bullet
+    description: pr-bullet is a tool for copying pull request to multiple repositories.
+    license: MIT
+    install: |
+      bin.install 'pr-bullet'
+nfpms:
+  -
+    id: pr-bullet-nfpms
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}-1_{{ .Arch }}"
+    builds:
+      - pr-bullet-linux
+    homepage: https://github.com/k1LoW/pr-bullet
+    maintainer: Ken'ichiro Oyama <k1lowxb@gmail.com>
+    description: pr-bullet is a tool for copying pull request to multiple repositories.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+    bindir: /usr/bin
+    epoch: 1
