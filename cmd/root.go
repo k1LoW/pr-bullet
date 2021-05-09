@@ -25,6 +25,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -40,6 +41,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var yes bool
+
 type Repo struct {
 	Owner string
 	Repo  string
@@ -51,9 +54,10 @@ func (r Repo) String() string {
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "pr-bullet [PULL_REQUEST_URL] [TARGET_REPOS...]",
-	Short: "pr-bullet is a tool for copying pull request to multiple repositories",
-	Long:  `pr-bullet is a tool for copying pull request to multiple repositories.`,
+	Use:          "pr-bullet [PULL_REQUEST_URL] [TARGET_REPOS...]",
+	Short:        "pr-bullet is a tool for copying pull request to multiple repositories",
+	Long:         `pr-bullet is a tool for copying pull request to multiple repositories.`,
+	SilenceUsage: true,
 	Args: func(cmd *cobra.Command, args []string) error {
 		switch {
 		case len(args) == 0:
@@ -71,7 +75,7 @@ var rootCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var t []string
-		usePipe := false
+		useStdin := false
 		g, err := gh.New()
 		if err != nil {
 			return err
@@ -80,7 +84,7 @@ var rootCmd = &cobra.Command{
 		if len(args[1:]) > 0 {
 			t = args[1:]
 		} else {
-			usePipe = true
+			useStdin = true
 			s, err := getStdin(os.Stdin)
 			if err != nil {
 				return nil
@@ -124,11 +128,15 @@ var rootCmd = &cobra.Command{
 		cmd.Println(color.Cyan("Target repositories:"))
 		cmd.Printf("  %s\n", strings.Join(s, ", "))
 
-		if !usePipe {
-			yn := prompter.YN("Do you want to create pull requests?", true)
-			if !yn {
-				return nil
-			}
+		switch {
+		case useStdin && !yes:
+			return errors.New("when using STDIN, add the --yes option to allow the process to continue.")
+		case !useStdin && !yes:
+			yes = prompter.YN("Do you want to create pull requests?", true)
+		}
+
+		if !yes {
+			return nil
 		}
 
 		for _, r := range repos {
@@ -158,6 +166,10 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func init() {
+	rootCmd.Flags().BoolVarP(&yes, "yes", "y", false, "automatic yes to prompts")
 }
 
 func getStdin(stdin io.Reader) (string, error) {
