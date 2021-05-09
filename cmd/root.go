@@ -22,8 +22,11 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -33,7 +36,7 @@ import (
 	"github.com/k1LoW/pr-bullet/gh"
 	"github.com/k1LoW/pr-bullet/version"
 	"github.com/labstack/gommon/color"
-	"github.com/mattn/go-isatty"
+	"github.com/mattn/go-colorable"
 	"github.com/spf13/cobra"
 )
 
@@ -55,13 +58,20 @@ var rootCmd = &cobra.Command{
 		switch {
 		case len(args) == 0:
 			return fmt.Errorf("accepts >1 arg(s), received %d", len(args))
-		case len(args) == 1 && !isatty.IsTerminal(os.Stdin.Fd()):
-			return fmt.Errorf("when received 1 arg, %s need STDIN", version.Name)
+		case len(args) == 1:
+			fi, err := os.Stdin.Stat()
+			if err != nil {
+				return err
+			}
+			if (fi.Mode() & os.ModeCharDevice) != 0 {
+				return fmt.Errorf("when received 1 arg, %s need STDIN", version.Name)
+			}
 		}
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var t []string
+		usePipe := false
 		g, err := gh.New()
 		if err != nil {
 			return err
@@ -69,7 +79,15 @@ var rootCmd = &cobra.Command{
 		prURL := args[0]
 		if len(args[1:]) > 0 {
 			t = args[1:]
+		} else {
+			usePipe = true
+			s, err := getStdin(os.Stdin)
+			if err != nil {
+				return nil
+			}
+			t = strings.Split(strings.TrimRight(s, "\n"), "\n")
 		}
+
 		ctx := context.Background()
 
 		owner, repo, number, err := gh.Parse(prURL)
@@ -105,9 +123,12 @@ var rootCmd = &cobra.Command{
 		cmd.Printf("  Files ... %d\n", len(contents))
 		cmd.Println(color.Cyan("Target repositories:"))
 		cmd.Printf("  %s\n", strings.Join(s, ", "))
-		yn := prompter.YN("Do you want to create pull requests?", true)
-		if !yn {
-			return nil
+
+		if !usePipe {
+			yn := prompter.YN("Do you want to create pull requests?", true)
+			if !yn {
+				return nil
+			}
 		}
 
 		for _, r := range repos {
@@ -139,4 +160,21 @@ func Execute() {
 	}
 }
 
-func init() {}
+func getStdin(stdin io.Reader) (string, error) {
+	in := bufio.NewReader(stdin)
+	out := new(bytes.Buffer)
+	nc := colorable.NewNonColorable(out)
+	for {
+		s, err := in.ReadBytes('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return "", err
+		}
+		_, err = nc.Write(s)
+		if err != nil {
+			return "", err
+		}
+	}
+	return out.String(), nil
+}
