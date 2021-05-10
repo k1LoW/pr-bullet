@@ -103,6 +103,10 @@ func (g *Gh) GetRepository(ctx context.Context, owner, repo string) (*github.Rep
 }
 
 func (g *Gh) CopyPullRequest(ctx context.Context, owner, repo string, pr *github.PullRequest, contents []*github.RepositoryContent) error {
+	_, _ = fmt.Fprintf(os.Stderr, "Copying %s/%s pull request #%d to %s/%s ... ", pr.GetHead().GetUser().GetLogin(), pr.GetHead().GetRepo().GetName(), pr.GetNumber(), owner, repo)
+	defer func() {
+		_, _ = fmt.Fprintln(os.Stderr, "")
+	}()
 	r, _, err := g.client.Repositories.Get(ctx, owner, repo)
 	if err != nil {
 		return err
@@ -163,16 +167,21 @@ func (g *Gh) CopyPullRequest(ctx context.Context, owner, repo string, pr *github
 		draft = false
 	}
 
-	if _, _, err := g.client.PullRequests.Create(ctx, owner, repo, &github.NewPullRequest{
+	npr, _, err := g.client.PullRequests.Create(ctx, owner, repo, &github.NewPullRequest{
 		Title: github.String(pr.GetTitle()),
 		Head:  github.String(gitRef.GetRef()),
 		Base:  github.String(base),
 		Body:  github.String(pr.GetBody()),
 		Draft: github.Bool(draft),
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
-
+	if draft {
+		_, _ = fmt.Fprintf(os.Stderr, "%s as draft", npr.GetHTMLURL())
+	} else {
+		_, _ = fmt.Fprintf(os.Stderr, "%s", npr.GetHTMLURL())
+	}
 	return nil
 }
 

@@ -121,12 +121,13 @@ var rootCmd = &cobra.Command{
 			s = append(s, Repo{owner, repo}.String())
 		}
 
-		cmd.Println(color.Cyan("Original pull request:"))
-		cmd.Printf("  Title ... %s\n", pr.GetTitle())
-		cmd.Printf("  URL   ... %s\n", prURL)
-		cmd.Printf("  Files ... %d\n", len(contents))
-		cmd.Println(color.Cyan("Target repositories:"))
-		cmd.Printf("  %s\n", strings.Join(s, ", "))
+		cmd.PrintErrln(color.Cyan("Original pull request:"))
+		cmd.PrintErrf("  Title ... %s\n", pr.GetTitle())
+		cmd.PrintErrf("  URL   ... %s\n", prURL)
+		cmd.PrintErrf("  Files ... %d\n", len(contents))
+		cmd.PrintErrln(color.Cyan("Target repositories:"))
+		cmd.PrintErrf("  %s\n", strings.Join(s, ", "))
+		cmd.PrintErrln("")
 
 		switch {
 		case useStdin && !yes:
@@ -138,6 +139,8 @@ var rootCmd = &cobra.Command{
 		if !yes {
 			return nil
 		}
+
+		cmd.PrintErrln("")
 
 		for _, r := range repos {
 			if err := g.CopyPullRequest(ctx, r.Owner, r.Repo, pr, contents); err != nil {
