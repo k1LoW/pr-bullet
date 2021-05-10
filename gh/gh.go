@@ -163,7 +163,7 @@ func (g *Gh) CopyPullRequest(ctx context.Context, owner, repo string, pr *github
 	}
 
 	draft := true
-	if r.GetPrivate() {
+	if r.GetVisibility() == "private" {
 		draft = false
 	}
 
