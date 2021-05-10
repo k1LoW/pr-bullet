@@ -23,6 +23,13 @@ Copying k1LoW/my-bullet pull request #3 to k1LoW/ndiag ... https://github.com/k1
 $
 ```
 
+### Required Environment variables
+
+| Environment variable | Description | Default |
+| --- | --- | --- |
+| `GITHUB_TOKEN` | Personal access token | - |
+| `GITHUB_API_URL` | API URL | `https://api.github.com` |
+
 ## Install
 
 **deb:**
