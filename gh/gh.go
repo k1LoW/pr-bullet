@@ -18,6 +18,12 @@ type Gh struct {
 	client *github.Client
 }
 
+type PullRequestFile struct {
+	Content *github.RepositoryContent
+	Mode    string
+	Type    string
+}
+
 func New() (*Gh, error) {
 	// GITHUB_TOKEN
 	token := os.Getenv("GITHUB_TOKEN")
@@ -72,7 +78,7 @@ func Parse(in string) (string, string, int, error) {
 	}
 }
 
-func (g *Gh) GetPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, []*github.RepositoryContent, error) {
+func (g *Gh) GetPullRequest(ctx context.Context, owner, repo string, number int) (*github.PullRequest, []*PullRequestFile, error) {
 	pr, _, err := g.client.PullRequests.Get(ctx, owner, repo, number)
 	if err != nil {
 		return nil, nil, err
@@ -83,7 +89,20 @@ func (g *Gh) GetPullRequest(ctx context.Context, owner, repo string, number int)
 	if err != nil {
 		return nil, nil, err
 	}
-	contents := []*github.RepositoryContent{}
+
+	tree, _, err := g.client.Git.GetTree(ctx, owner, repo, pr.GetHead().GetSHA(), true)
+	if err != nil {
+		return nil, nil, err
+	}
+	entries := map[string]*PullRequestFile{}
+	for _, e := range tree.Entries {
+		entries[e.GetPath()] = &PullRequestFile{
+			Mode: e.GetMode(),
+			Type: e.GetType(),
+		}
+	}
+
+	prFiles := []*PullRequestFile{}
 	for _, f := range files {
 		fc, _, _, err := g.client.Repositories.GetContents(ctx, owner, repo, f.GetFilename(), &github.RepositoryContentGetOptions{
 			Ref: pr.Head.GetRef(),
@@ -91,10 +110,15 @@ func (g *Gh) GetPullRequest(ctx context.Context, owner, repo string, number int)
 		if err != nil {
 			return nil, nil, err
 		}
-		contents = append(contents, fc)
+		prFile, ok := entries[f.GetFilename()]
+		if !ok {
+			return nil, nil, fmt.Errorf("not found: %s", f.GetFilename())
+		}
+		prFile.Content = fc
+		prFiles = append(prFiles, prFile)
 	}
 
-	return pr, contents, nil
+	return pr, prFiles, nil
 }
 
 func (g *Gh) GetRepository(ctx context.Context, owner, repo string) (*github.Repository, error) {
@@ -102,7 +126,7 @@ func (g *Gh) GetRepository(ctx context.Context, owner, repo string) (*github.Rep
 	return r, err
 }
 
-func (g *Gh) CopyPullRequest(ctx context.Context, owner, repo string, pr *github.PullRequest, contents []*github.RepositoryContent) error {
+func (g *Gh) CopyPullRequest(ctx context.Context, owner, repo string, pr *github.PullRequest, files []*PullRequestFile) error {
 	_, _ = fmt.Fprintf(os.Stderr, "Copying %s/%s pull request #%d to %s/%s ... ", pr.GetHead().GetUser().GetLogin(), pr.GetHead().GetRepo().GetName(), pr.GetNumber(), owner, repo)
 	defer func() {
 		_, _ = fmt.Fprintln(os.Stderr, "")
@@ -122,19 +146,19 @@ func (g *Gh) CopyPullRequest(ctx context.Context, owner, repo string, pr *github
 	}
 
 	entries := []*github.TreeEntry{}
-	for _, c := range contents {
+	for _, f := range files {
 		blob, _, err := g.client.Git.CreateBlob(ctx, owner, repo, &github.Blob{
-			Content:  c.Content,
-			Encoding: github.String(c.GetEncoding()),
-			Size:     github.Int(c.GetSize()),
+			Content:  f.Content.Content,
+			Encoding: github.String(f.Content.GetEncoding()),
+			Size:     github.Int(f.Content.GetSize()),
 		})
 		if err != nil {
 			return err
 		}
 		entry := &github.TreeEntry{
-			Path: github.String(c.GetPath()),
-			Mode: github.String("100644"),
-			Type: github.String("blob"),
+			Path: github.String(f.Content.GetPath()),
+			Mode: github.String(f.Mode),
+			Type: github.String(f.Type),
 			SHA:  github.String(blob.GetSHA()),
 		}
 		entries = append(entries, entry)
