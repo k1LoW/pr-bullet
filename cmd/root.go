@@ -98,7 +98,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		pr, contents, err := g.GetPullRequest(ctx, owner, repo, number)
+		pr, files, err := g.GetPullRequest(ctx, owner, repo, number)
 		if err != nil {
 			return err
 		}
@@ -124,7 +124,7 @@ var rootCmd = &cobra.Command{
 		cmd.PrintErrln(color.Cyan("Original pull request:"))
 		cmd.PrintErrf("  Title ... %s\n", pr.GetTitle())
 		cmd.PrintErrf("  URL   ... %s\n", prURL)
-		cmd.PrintErrf("  Files ... %d\n", len(contents))
+		cmd.PrintErrf("  Files ... %d\n", len(files))
 		cmd.PrintErrln(color.Cyan("Target repositories:"))
 		cmd.PrintErrf("  %s\n", strings.Join(s, ", "))
 		cmd.PrintErrln("")
@@ -143,7 +143,7 @@ var rootCmd = &cobra.Command{
 		cmd.PrintErrln("")
 
 		for _, r := range repos {
-			if err := g.CopyPullRequest(ctx, r.Owner, r.Repo, pr, contents); err != nil {
+			if err := g.CopyPullRequest(ctx, r.Owner, r.Repo, pr, files); err != nil {
 				return err
 			}
 		}
