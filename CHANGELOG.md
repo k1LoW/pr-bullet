@@ -1,3 +1,7 @@
+## [v0.3.1](https://github.com/k1LoW/pr-bullet/compare/v0.3.0...v0.3.1) (2021-05-20)
+
+* Add -v option to show version [#4](https://github.com/k1LoW/pr-bullet/pull/4) ([k1LoW](https://github.com/k1LoW))
+
 ## [v0.3.0](https://github.com/k1LoW/pr-bullet/compare/v0.2.1...v0.3.0) (2021-05-19)
 
 * Copy file mode from git tree [#3](https://github.com/k1LoW/pr-bullet/pull/3) ([k1LoW](https://github.com/k1LoW))
