@@ -57,6 +57,7 @@ var rootCmd = &cobra.Command{
 	Use:          "pr-bullet [PULL_REQUEST_URL] [TARGET_REPOS...]",
 	Short:        "pr-bullet is a tool for copying pull request to multiple repositories",
 	Long:         `pr-bullet is a tool for copying pull request to multiple repositories.`,
+	Version:      version.Version,
 	SilenceUsage: true,
 	Args: func(cmd *cobra.Command, args []string) error {
 		switch {
