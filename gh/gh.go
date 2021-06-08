@@ -19,9 +19,12 @@ type Gh struct {
 }
 
 type PullRequestFile struct {
-	Content *github.RepositoryContent
-	Mode    string
-	Type    string
+	Path     string
+	Mode     string
+	Type     string
+	Encoding string
+	Size     int
+	Content  *string
 }
 
 func New() (*Gh, error) {
@@ -94,28 +97,33 @@ func (g *Gh) GetPullRequest(ctx context.Context, owner, repo string, number int)
 	if err != nil {
 		return nil, nil, err
 	}
-	entries := map[string]*PullRequestFile{}
-	for _, e := range tree.Entries {
-		entries[e.GetPath()] = &PullRequestFile{
-			Mode: e.GetMode(),
-			Type: e.GetType(),
+
+	prMap := map[string]*PullRequestFile{}
+	for _, f := range files {
+		prMap[f.GetFilename()] = &PullRequestFile{
+			Path: f.GetFilename(),
 		}
 	}
 
-	prFiles := []*PullRequestFile{}
-	for _, f := range files {
-		fc, _, _, err := g.client.Repositories.GetContents(ctx, owner, repo, f.GetFilename(), &github.RepositoryContentGetOptions{
-			Ref: pr.Head.GetRef(),
-		})
+	for _, e := range tree.Entries {
+		f, ok := prMap[e.GetPath()]
+		if !ok {
+			continue
+		}
+		f.Mode = e.GetMode()
+		f.Type = e.GetType()
+		f.Size = e.GetSize()
+		b, _, err := g.client.Git.GetBlob(ctx, owner, repo, e.GetSHA())
 		if err != nil {
 			return nil, nil, err
 		}
-		prFile, ok := entries[f.GetFilename()]
-		if !ok {
-			return nil, nil, fmt.Errorf("not found: %s", f.GetFilename())
-		}
-		prFile.Content = fc
-		prFiles = append(prFiles, prFile)
+		f.Content = b.Content
+		f.Encoding = b.GetEncoding()
+	}
+
+	prFiles := []*PullRequestFile{}
+	for _, f := range prMap {
+		prFiles = append(prFiles, f)
 	}
 
 	return pr, prFiles, nil
@@ -148,15 +156,15 @@ func (g *Gh) CopyPullRequest(ctx context.Context, owner, repo string, pr *github
 	entries := []*github.TreeEntry{}
 	for _, f := range files {
 		blob, _, err := g.client.Git.CreateBlob(ctx, owner, repo, &github.Blob{
-			Content:  f.Content.Content,
-			Encoding: github.String(f.Content.GetEncoding()),
-			Size:     github.Int(f.Content.GetSize()),
+			Content:  f.Content,
+			Encoding: github.String(f.Encoding),
+			Size:     github.Int(f.Size),
 		})
 		if err != nil {
 			return err
 		}
 		entry := &github.TreeEntry{
-			Path: github.String(f.Content.GetPath()),
+			Path: github.String(f.Path),
 			Mode: github.String(f.Mode),
 			Type: github.String(f.Type),
 			SHA:  github.String(blob.GetSHA()),
