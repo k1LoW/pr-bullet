@@ -1,3 +1,7 @@
+## [v0.4.1](https://github.com/k1LoW/pr-bullet/compare/v0.4.0...v0.4.1) (2022-02-09)
+
+* Support darwin arm64 [#6](https://github.com/k1LoW/pr-bullet/pull/6) ([k1LoW](https://github.com/k1LoW))
+
 ## [v0.4.0](https://github.com/k1LoW/pr-bullet/compare/v0.3.1...v0.4.0) (2021-06-08)
 
 * Support large blob ( < 100MB ) [#5](https://github.com/k1LoW/pr-bullet/pull/5) ([k1LoW](https://github.com/k1LoW))
