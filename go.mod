@@ -8,5 +8,5 @@ require (
 	github.com/labstack/gommon v0.3.0
 	github.com/mattn/go-colorable v0.1.2
 	github.com/spf13/cobra v1.1.3
-	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 )
